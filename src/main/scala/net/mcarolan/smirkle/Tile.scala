@@ -6,22 +6,26 @@ import scala.annotation.tailrec
 
 case class Tile(shape: Shape, colour: Colour)
 
-case class Position(x: Int, y: Int) {
-  def left: Position = Position(x - 1, y)
+case class Position(x: Int, y: Int)
+object Direction {
+  def left(position: Position): Position =
+    position.copy(x = position.x - 1, y = position.y)
+  def below(position: Position): Position =
+    position.copy(x = position.x, y = position.y - 1)
 }
 
 case class TileGrid(elements: Map[Position, Tile]) {
 
-  private def left(position: Position): List[Tile] = {
+  private def neighbours(position: Position, direction: Position => Position): List[Tile] = {
     @tailrec def inner(p: Position, acc: List[Tile]): List[Tile] =
       elements.get(p) match {
         case Some(tile) =>
-          inner(p.left, acc :+ tile)
+          inner(direction(p), acc :+ tile)
         case None =>
           acc
       }
 
-    inner(position.left, Nil)
+    inner(direction(position), Nil)
   }
 
   private def valid(tiles: List[Tile]): Boolean = {
@@ -37,13 +41,27 @@ case class TileGrid(elements: Map[Position, Tile]) {
   }
 
   def place(tile: Tile, position: Position): Option[TileGrid] = {
-    val leftNeighbours = left(position)
-    leftNeighbours match {
-      case Nil if position != Position(0, 0) =>
-        None
-      case neighbours if valid(tile :: neighbours) =>
+    if (position == Position(0, 0) && elements.isEmpty)
+      Some(TileGrid(elements = elements + (position -> tile)))
+    else {
+      val left = neighbours(position, Direction.left)
+      val below = neighbours(position, Direction.below)
+
+      val validLeft =
+        if (left.nonEmpty)
+          valid(tile :: left)
+        else
+          false
+
+      val validBelow =
+        if (below.nonEmpty)
+          valid(tile :: below)
+        else
+          false
+
+      if(validBelow || validLeft)
         Some(TileGrid(elements = elements + (position -> tile)))
-      case _ =>
+      else
         None
     }
   }
