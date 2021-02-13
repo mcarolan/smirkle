@@ -1,4 +1,5 @@
 package net.mcarolan.smirkle
+import cats.data.NonEmptyList
 import enumeratum._
 
 object Domain {
@@ -28,5 +29,32 @@ object Domain {
 
     override def values: IndexedSeq[Shape] = findValues
   }
+
+  case class Tile(shape: Shape, colour: Colour)
+
+  case class Position(x: Int, y: Int)
+
+  object Direction {
+    def left(position: Position): Position =
+      position.copy(x = position.x - 1, y = position.y)
+
+    def right(position: Position): Position =
+      position.copy(x = position.x + 1, y = position.y)
+
+    def below(position: Position): Position =
+      position.copy(x = position.x, y = position.y - 1)
+
+    def above(position: Position): Position =
+      position.copy(x = position.x, y = position.y + 1)
+  }
+
+  case class PositionedTile(position: Position, tile: Tile)
+
+  sealed trait InvalidPlacementsReason
+  case object EmptyGridMustIncludeOrigin extends InvalidPlacementsReason
+  case class PlacingOverCurrentlyPlacedTiles(tiles: NonEmptyList[PositionedTile]) extends InvalidPlacementsReason
+  case class DuplicatePlacement(tiles: NonEmptyList[PositionedTile]) extends InvalidPlacementsReason
+  case class CreatesInvalidLines(lines: NonEmptyList[NonEmptyList[PositionedTile]]) extends InvalidPlacementsReason
+  case object AllPlacedTilesMustBeInALine extends InvalidPlacementsReason
 
 }

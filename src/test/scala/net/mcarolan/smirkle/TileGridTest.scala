@@ -2,7 +2,7 @@ package net.mcarolan.smirkle
 
 import cats.data.NonEmptyList
 import cats.data.Validated.{Invalid, Valid}
-import net.mcarolan.smirkle.Domain.{Colour, Shape}
+import net.mcarolan.smirkle.Domain._
 import org.scalatest.OptionValues
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers
@@ -15,17 +15,17 @@ class TileGridTest extends AnyFreeSpec with Matchers with OptionValues with Tabl
     "can place a tile at Position(0, 0)" in {
       val tile = Tile(Shape.One, Colour.Red)
       val position = Position(0, 0)
-      val result = TileGrid.Initial.place(NonEmptyList.of(position -> tile))
+      val result = TileGrid.Initial.place(NonEmptyList.of(PositionedTile(position, tile)))
 
       result shouldBe a[Valid[_]]
       val grid = result.toOption.value
       grid should have size 1
-      grid.at(position).value shouldBe tile
+      grid.at(position).value shouldBe PositionedTile(position, tile)
     }
 
     "cannot place in Position(1, 0) on an empty grid" in {
       val result =
-        TileGrid.Initial.place(NonEmptyList.of(Position(1, 0) -> Tile(Shape.One, Colour.Red)))
+        TileGrid.Initial.place(NonEmptyList.of(PositionedTile(Position(1, 0), Tile(Shape.One, Colour.Red))))
       result shouldBe an[Invalid[_]]
     }
   }
@@ -56,14 +56,14 @@ class TileGridTest extends AnyFreeSpec with Matchers with OptionValues with Tabl
               s"3 tile placement - $testDescription - place $positionDescription" in {
                 val position1 = Position(0, 0)
 
-                val result = TileGrid.Initial.place(NonEmptyList.of(position1 -> tile1, position2 -> tile2))
+                val result = TileGrid.Initial.place(NonEmptyList.of(PositionedTile(position1, tile1), PositionedTile(position2, tile2)))
 
                 if (shouldBeSuccessful) {
                   result shouldBe a[Valid[_]]
                   val grid = result.toOption.value
                   grid should have size 2
-                  grid.at(position1).value shouldBe tile1
-                  grid.at(position2).value shouldBe tile2
+                  grid.at(position1).value shouldBe PositionedTile(position1, tile1)
+                  grid.at(position2).value shouldBe PositionedTile(position2, tile2)
                 }
                 else
                   result shouldBe an[Invalid[_]]
@@ -77,8 +77,8 @@ class TileGridTest extends AnyFreeSpec with Matchers with OptionValues with Tabl
           val tile2 = Tile(Shape.Two, Colour.Red)
 
           val result =
-            TileGrid.Initial.place(NonEmptyList.of(position1 -> tile1, position2 -> tile2)).andThen { first =>
-              first.place(NonEmptyList.of(position2 -> tile2))
+            TileGrid.Initial.place(NonEmptyList.of(PositionedTile(position1, tile1), PositionedTile(position2, tile2))).andThen { first =>
+              first.place(NonEmptyList.of(PositionedTile(position2, tile2)))
             }
 
           result shouldBe an[Invalid[_]]
@@ -114,17 +114,17 @@ class TileGridTest extends AnyFreeSpec with Matchers with OptionValues with Tabl
               s"3 tile placement - $testDescription - place $positionDescription" in {
                 val position1 = Position(0, 0)
                 val result =
-                  TileGrid.Initial.place(NonEmptyList.of(position1 -> tile1, position2 -> tile2)).andThen { first =>
-                    first.place(NonEmptyList.of(position3 -> tile3))
+                  TileGrid.Initial.place(NonEmptyList.of(PositionedTile(position1, tile1), PositionedTile(position2, tile2))).andThen { first =>
+                    first.place(NonEmptyList.of(PositionedTile(position3, tile3)))
                   }
 
                 if (shouldBeSuccessful) {
                   result shouldBe a[Valid[_]]
                   val grid = result.toOption.value
                   grid should have size 3
-                  grid.at(position1).value shouldBe tile1
-                  grid.at(position2).value shouldBe tile2
-                  grid.at(position3).value shouldBe tile3
+                  grid.at(position1).value shouldBe PositionedTile(position1, tile1)
+                  grid.at(position2).value shouldBe PositionedTile(position2, tile2)
+                  grid.at(position3).value shouldBe PositionedTile(position3, tile3)
                 }
                 else
                   result shouldBe an[Invalid[_]]
@@ -148,9 +148,9 @@ class TileGridTest extends AnyFreeSpec with Matchers with OptionValues with Tabl
       val tile4 = Tile(Shape.Three, Colour.Red)
 
       val result =
-        TileGrid.Initial.place(NonEmptyList.of(position1 -> tile1, position2 -> tile2)).andThen { first =>
-          first.place(NonEmptyList.of(position3 -> tile3)).andThen { second =>
-            second.place(NonEmptyList.of(position4 -> tile4))
+        TileGrid.Initial.place(NonEmptyList.of(PositionedTile(position1, tile1), PositionedTile(position2, tile2))).andThen { first =>
+          first.place(NonEmptyList.of(PositionedTile(position3, tile3))).andThen { second =>
+            second.place(NonEmptyList.of(PositionedTile(position4, tile4)))
           }
         }
 
@@ -168,7 +168,7 @@ class TileGridTest extends AnyFreeSpec with Matchers with OptionValues with Tabl
       val tile3 = Tile(Shape.Four, Colour.Red)
 
       val result =
-        TileGrid.Initial.place(NonEmptyList.of(position1 -> tile1, position2 -> tile2, position3 -> tile3))
+        TileGrid.Initial.place(NonEmptyList.of(PositionedTile(position1, tile1), PositionedTile(position2, tile2), PositionedTile(position3, tile3)))
 
       result shouldBe an[Invalid[_]]
     }
@@ -184,8 +184,8 @@ class TileGridTest extends AnyFreeSpec with Matchers with OptionValues with Tabl
       val tile3 = Tile(Shape.Four, Colour.Red)
 
       val result =
-        TileGrid.Initial.place(NonEmptyList.of(position1 -> tile1, position2 -> tile2)).andThen { first =>
-          first.place(NonEmptyList.of(position3 -> tile3))
+        TileGrid.Initial.place(NonEmptyList.of(PositionedTile(position1, tile1), PositionedTile(position2, tile2))).andThen { first =>
+          first.place(NonEmptyList.of(PositionedTile(position3, tile3)))
         }
 
       result shouldBe an[Invalid[_]]
@@ -199,7 +199,7 @@ class TileGridTest extends AnyFreeSpec with Matchers with OptionValues with Tabl
       val tile2 = Tile(Shape.Three, Colour.Red)
 
       val result =
-        TileGrid.Initial.place(NonEmptyList.of(position1 -> tile1, position2 -> tile2))
+        TileGrid.Initial.place(NonEmptyList.of(PositionedTile(position1, tile1), PositionedTile(position2, tile2)))
 
       result shouldBe an[Invalid[_]]
     }
