@@ -10,8 +10,12 @@ case class Position(x: Int, y: Int)
 object Direction {
   def left(position: Position): Position =
     position.copy(x = position.x - 1, y = position.y)
+  def right(position: Position): Position =
+    position.copy(x = position.x + 1, y = position.y)
   def below(position: Position): Position =
     position.copy(x = position.x, y = position.y - 1)
+  def above(position: Position): Position =
+    position.copy(x = position.x, y = position.y + 1)
 }
 
 case class TileGrid(elements: Map[Position, Tile]) {
@@ -44,22 +48,17 @@ case class TileGrid(elements: Map[Position, Tile]) {
     if (position == Position(0, 0) && elements.isEmpty)
       Some(TileGrid(elements = elements + (position -> tile)))
     else {
-      val left = neighbours(position, Direction.left)
-      val below = neighbours(position, Direction.below)
+      val allNeighbours = List(
+        neighbours(position, Direction.left),
+        neighbours(position, Direction.right),
+        neighbours(position, Direction.below),
+        neighbours(position, Direction.above)
+      )
 
-      val validLeft =
-        if (left.nonEmpty)
-          valid(tile :: left)
-        else
-          false
+      val totalNeighbourHoods = allNeighbours.count(_.nonEmpty)
+      val validNeighbours = allNeighbours.filter(_.nonEmpty).count(neighbourhood => valid(tile :: neighbourhood))
 
-      val validBelow =
-        if (below.nonEmpty)
-          valid(tile :: below)
-        else
-          false
-
-      if(validBelow || validLeft)
+      if (totalNeighbourHoods > 0 && totalNeighbourHoods == validNeighbours)
         Some(TileGrid(elements = elements + (position -> tile)))
       else
         None

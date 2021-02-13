@@ -4,8 +4,9 @@ import net.mcarolan.smirkle.Domain.{Colour, Shape}
 import org.scalatest.OptionValues
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers
+import org.scalatest.prop.TableDrivenPropertyChecks
 
-class TileGridTest extends AnyFreeSpec with Matchers with OptionValues {
+class TileGridTest extends AnyFreeSpec with Matchers with OptionValues with TableDrivenPropertyChecks {
 
   "basic" - {
     "can place a tile at Position(0, 0)" in {
@@ -25,305 +26,193 @@ class TileGridTest extends AnyFreeSpec with Matchers with OptionValues {
   }
 
   "neighbourhood size = 2" - {
-    "place to right" - {
-      "can same colour different shape" in {
-        val position1 = Position(0, 0)
-        val tile1 = Tile(Shape.One, Colour.Red)
+    val positions =
+      Table(
+        ("description", "position 2"),
+        ("to right", Position(1, 0)),
+        ("above", Position(0, 1)),
+        ("below", Position(0, -1)),
+        ("to left", Position(-1, 0))
+      )
 
-        val position2 = Position(1, 0)
-        val tile2 = Tile(Shape.Two, Colour.Red)
+    forAll(positions) {
+      case (description, position2) =>
+        s"place $description" - {
+          "can same colour different shape" in {
+            val position1 = Position(0, 0)
+            val tile1 = Tile(Shape.One, Colour.Red)
 
-        val result = (for {
-          first <- TileGrid.Initial.place(tile1, position1)
-          second <- first.place(tile2, position2)
-        } yield second).value
+            val tile2 = Tile(Shape.Two, Colour.Red)
 
-        result should have size 2
-        result.at(position1).value shouldBe tile1
-        result.at(position2).value shouldBe tile2
-      }
+            val result = (for {
+              first <- TileGrid.Initial.place(tile1, position1)
+              second <- first.place(tile2, position2)
+            } yield second).value
 
-      "can different colour same shape" in {
-        val position1 = Position(0, 0)
-        val tile1 = Tile(Shape.One, Colour.Red)
+            result should have size 2
+            result.at(position1).value shouldBe tile1
+            result.at(position2).value shouldBe tile2
+          }
 
-        val position2 = Position(1, 0)
-        val tile2 = Tile(Shape.One, Colour.Blue)
+          "can different colour same shape" in {
+            val position1 = Position(0, 0)
+            val tile1 = Tile(Shape.One, Colour.Red)
 
-          val result = (for {
-            first <- TileGrid.Initial.place(tile1, position1)
-            second <- first.place(tile2, position2)
-          } yield second).value
+            val tile2 = Tile(Shape.One, Colour.Blue)
 
-        result should have size 2
-        result.at(position1).value shouldBe tile1
-        result.at(position2).value shouldBe tile2
-      }
+            val result = (for {
+              first <- TileGrid.Initial.place(tile1, position1)
+              second <- first.place(tile2, position2)
+            } yield second).value
 
-      "cannot same colour same shape" in {
-        val position1 = Position(0, 0)
-        val tile1 = Tile(Shape.One, Colour.Red)
+            result should have size 2
+            result.at(position1).value shouldBe tile1
+            result.at(position2).value shouldBe tile2
+          }
 
-        val position2 = Position(1, 0)
-        val tile2 = Tile(Shape.One, Colour.Red)
+          "cannot same colour same shape" in {
+            val position1 = Position(0, 0)
+            val tile1 = Tile(Shape.One, Colour.Red)
 
-        val result = for {
-          first <- TileGrid.Initial.place(tile1, position1)
-          second <- first.place(tile2, position2)
-        } yield second
+            val tile2 = Tile(Shape.One, Colour.Red)
 
-        result shouldBe None
-      }
+            val result = for {
+              first <- TileGrid.Initial.place(tile1, position1)
+              second <- first.place(tile2, position2)
+            } yield second
 
-      "cannot different colour different shape" in {
-        val position1 = Position(0, 0)
-        val tile1 = Tile(Shape.One, Colour.Red)
+            result shouldBe None
+          }
 
-        val position2 = Position(1, 0)
-        val tile2 = Tile(Shape.Two, Colour.Blue)
+          "cannot different colour different shape" in {
+            val position1 = Position(0, 0)
+            val tile1 = Tile(Shape.One, Colour.Red)
 
-        val result = for {
-          first <- TileGrid.Initial.place(tile1, position1)
-          second <- first.place(tile2, position2)
-        } yield second
+            val tile2 = Tile(Shape.Two, Colour.Blue)
 
-        result shouldBe None
-      }
-    }
+            val result = for {
+              first <- TileGrid.Initial.place(tile1, position1)
+              second <- first.place(tile2, position2)
+            } yield second
 
-    "place above" - {
-      "can same colour different shape" in {
-        val position1 = Position(0, 0)
-        val tile1 = Tile(Shape.One, Colour.Red)
-
-        val position2 = Position(0, 1)
-        val tile2 = Tile(Shape.Two, Colour.Red)
-
-        val result = (for {
-          first <- TileGrid.Initial.place(tile1, position1)
-          second <- first.place(tile2, position2)
-        } yield second).value
-
-        result should have size 2
-        result.at(position1).value shouldBe tile1
-        result.at(position2).value shouldBe tile2
-      }
-
-      "can different colour same shape" in {
-        val position1 = Position(0, 0)
-        val tile1 = Tile(Shape.One, Colour.Red)
-
-        val position2 = Position(0, 1)
-        val tile2 = Tile(Shape.One, Colour.Blue)
-
-        val result = (for {
-          first <- TileGrid.Initial.place(tile1, position1)
-          second <- first.place(tile2, position2)
-        } yield second).value
-
-        result should have size 2
-        result.at(position1).value shouldBe tile1
-        result.at(position2).value shouldBe tile2
-      }
-
-      "cannot same colour same shape" in {
-        val position1 = Position(0, 0)
-        val tile1 = Tile(Shape.One, Colour.Red)
-
-        val position2 = Position(0, 1)
-        val tile2 = Tile(Shape.One, Colour.Red)
-
-        val result = for {
-          first <- TileGrid.Initial.place(tile1, position1)
-          second <- first.place(tile2, position2)
-        } yield second
-
-        result shouldBe None
-      }
-
-      "cannot different colour different shape" in {
-        val position1 = Position(0, 0)
-        val tile1 = Tile(Shape.One, Colour.Red)
-
-        val position2 = Position(0, 1)
-        val tile2 = Tile(Shape.Two, Colour.Blue)
-
-        val result = for {
-          first <- TileGrid.Initial.place(tile1, position1)
-          second <- first.place(tile2, position2)
-        } yield second
-
-        result shouldBe None
-      }
+            result shouldBe None
+          }
+        }
     }
   }
 
   "neighbourhood size = 3" - {
-    "place to right" - {
-      "can have same shape different colours" in {
-        val position1 = Position(0, 0)
-        val tile1 = Tile(Shape.One, Colour.Red)
+    val positions =
+      Table(
+        ("description", "position 2", "position 3"),
+        ("to right", Position(1, 0), Position(2, 0)),
+        ("above", Position(0, 1), Position(0, 2)),
+        ("below", Position(0, -1), Position(0, -2)),
+        ("to left", Position(-1, 0), Position(-2, 0))
+      )
 
-        val position2 = Position(1, 0)
-        val tile2 = Tile(Shape.One, Colour.Yellow)
+    forAll(positions) {
+      case (description, position2, position3) =>
+        s"place $description" - {
+          "can have same shape different colours" in {
+            val position1 = Position(0, 0)
+            val tile1 = Tile(Shape.One, Colour.Red)
 
-        val position3 = Position(2, 0)
-        val tile3 = Tile(Shape.One, Colour.Blue)
+            val tile2 = Tile(Shape.One, Colour.Yellow)
 
-        val result = (for {
-          first <- TileGrid.Initial.place(tile1, position1)
-          second <- first.place(tile2, position2)
-          third <- second.place(tile3, position3)
-        } yield third).value
+            val tile3 = Tile(Shape.One, Colour.Blue)
 
-        result should have size 3
-        result.at(position1).value shouldBe tile1
-        result.at(position2).value shouldBe tile2
-        result.at(position3).value shouldBe tile3
-      }
+            val result = (for {
+              first <- TileGrid.Initial.place(tile1, position1)
+              second <- first.place(tile2, position2)
+              third <- second.place(tile3, position3)
+            } yield third).value
 
-      "can have different shape same colours" in {
-        val position1 = Position(0, 0)
-        val tile1 = Tile(Shape.One, Colour.Red)
+            result should have size 3
+            result.at(position1).value shouldBe tile1
+            result.at(position2).value shouldBe tile2
+            result.at(position3).value shouldBe tile3
+          }
 
-        val position2 = Position(1, 0)
-        val tile2 = Tile(Shape.Two, Colour.Red)
+          "can have different shape same colours" in {
+            val position1 = Position(0, 0)
+            val tile1 = Tile(Shape.One, Colour.Red)
 
-        val position3 = Position(2, 0)
-        val tile3 = Tile(Shape.Three, Colour.Red)
+            val tile2 = Tile(Shape.Two, Colour.Red)
 
-        val result = (for {
-          first <- TileGrid.Initial.place(tile1, position1)
-          second <- first.place(tile2, position2)
-          third <- second.place(tile3, position3)
-        } yield third).value
+            val tile3 = Tile(Shape.Three, Colour.Red)
 
-        result should have size 3
-        result.at(position1).value shouldBe tile1
-        result.at(position2).value shouldBe tile2
-        result.at(position3).value shouldBe tile3
-      }
+            val result = (for {
+              first <- TileGrid.Initial.place(tile1, position1)
+              second <- first.place(tile2, position2)
+              third <- second.place(tile3, position3)
+            } yield third).value
 
-      "cannot have same shape repeated colour" in {
-        val position1 = Position(0, 0)
-        val tile1 = Tile(Shape.One, Colour.Red)
+            result should have size 3
+            result.at(position1).value shouldBe tile1
+            result.at(position2).value shouldBe tile2
+            result.at(position3).value shouldBe tile3
+          }
 
-        val position2 = Position(1, 0)
-        val tile2 = Tile(Shape.One, Colour.Yellow)
+          "cannot have same shape repeated colour" in {
+            val position1 = Position(0, 0)
+            val tile1 = Tile(Shape.One, Colour.Red)
 
-        val position3 = Position(2, 0)
-        val tile3 = Tile(Shape.One, Colour.Red)
+            val tile2 = Tile(Shape.One, Colour.Yellow)
 
-        val result = for {
-          first <- TileGrid.Initial.place(tile1, position1)
-          second <- first.place(tile2, position2)
-          third <- second.place(tile3, position3)
-        } yield third
+            val tile3 = Tile(Shape.One, Colour.Red)
 
-        result shouldBe None
-      }
+            val result = for {
+              first <- TileGrid.Initial.place(tile1, position1)
+              second <- first.place(tile2, position2)
+              third <- second.place(tile3, position3)
+            } yield third
 
-      "cannot have same colour repeated shape" in {
-        val position1 = Position(0, 0)
-        val tile1 = Tile(Shape.One, Colour.Red)
+            result shouldBe None
+          }
 
-        val position2 = Position(1, 0)
-        val tile2 = Tile(Shape.Two, Colour.Red)
+          "cannot have same colour repeated shape" in {
+            val position1 = Position(0, 0)
+            val tile1 = Tile(Shape.One, Colour.Red)
 
-        val position3 = Position(2, 0)
-        val tile3 = Tile(Shape.One, Colour.Red)
+            val tile2 = Tile(Shape.Two, Colour.Red)
 
-        val result = for {
-          first <- TileGrid.Initial.place(tile1, position1)
-          second <- first.place(tile2, position2)
-          third <- second.place(tile3, position3)
-        } yield third
+            val tile3 = Tile(Shape.One, Colour.Red)
 
-        result shouldBe None
-      }
+            val result = for {
+              first <- TileGrid.Initial.place(tile1, position1)
+              second <- first.place(tile2, position2)
+              third <- second.place(tile3, position3)
+            } yield third
+
+            result shouldBe None
+          }
+        }
     }
-    "place above" - {
-      "can have same shape different colours" in {
-        val position1 = Position(0, 0)
-        val tile1 = Tile(Shape.One, Colour.Red)
+  }
 
-        val position2 = Position(0, 1)
-        val tile2 = Tile(Shape.One, Colour.Yellow)
+  "advanced" - {
+    "ensures all neighbourhoods are valid" in {
+      val position1 = Position(0, 0)
+      val tile1 = Tile(Shape.One, Colour.Red)
 
-        val position3 = Position(0, 2)
-        val tile3 = Tile(Shape.One, Colour.Blue)
+      val position2 = Position(1, 0)
+      val tile2 = Tile(Shape.Three, Colour.Red)
 
-        val result = (for {
-          first <- TileGrid.Initial.place(tile1, position1)
-          second <- first.place(tile2, position2)
-          third <- second.place(tile3, position3)
-        } yield third).value
+      val position3 = Position(0, -1)
+      val tile3 = Tile(Shape.Two, Colour.Red)
 
-        result should have size 3
-        result.at(position1).value shouldBe tile1
-        result.at(position2).value shouldBe tile2
-        result.at(position3).value shouldBe tile3
-      }
+      val position4 = Position(1, -1)
+      val tile4 = Tile(Shape.Three, Colour.Red)
 
-      "can have different shape same colours" in {
-        val position1 = Position(0, 0)
-        val tile1 = Tile(Shape.One, Colour.Red)
+      val result = for {
+        first <- TileGrid.Initial.place(tile1, position1)
+        second <- first.place(tile2, position2)
+        third <- second.place(tile3, position3)
+        fourth <- third.place(tile4, position4)
+      } yield fourth
 
-        val position2 = Position(0, 1)
-        val tile2 = Tile(Shape.Two, Colour.Red)
-
-        val position3 = Position(0, 2)
-        val tile3 = Tile(Shape.Three, Colour.Red)
-
-        val result = (for {
-          first <- TileGrid.Initial.place(tile1, position1)
-          second <- first.place(tile2, position2)
-          third <- second.place(tile3, position3)
-        } yield third).value
-
-        result should have size 3
-        result.at(position1).value shouldBe tile1
-        result.at(position2).value shouldBe tile2
-        result.at(position3).value shouldBe tile3
-      }
-
-      "cannot have same shape repeated colour" in {
-        val position1 = Position(0, 0)
-        val tile1 = Tile(Shape.One, Colour.Red)
-
-        val position2 = Position(0, 1)
-        val tile2 = Tile(Shape.One, Colour.Yellow)
-
-        val position3 = Position(0, 2)
-        val tile3 = Tile(Shape.One, Colour.Red)
-
-        val result = for {
-          first <- TileGrid.Initial.place(tile1, position1)
-          second <- first.place(tile2, position2)
-          third <- second.place(tile3, position3)
-        } yield third
-
-        result shouldBe None
-      }
-
-      "cannot have same colour repeated shape" in {
-        val position1 = Position(0, 0)
-        val tile1 = Tile(Shape.One, Colour.Red)
-
-        val position2 = Position(0, 1)
-        val tile2 = Tile(Shape.Two, Colour.Red)
-
-        val position3 = Position(0, 2)
-        val tile3 = Tile(Shape.One, Colour.Red)
-
-        val result = for {
-          first <- TileGrid.Initial.place(tile1, position1)
-          second <- first.place(tile2, position2)
-          third <- second.place(tile3, position3)
-        } yield third
-
-        result shouldBe None
-      }
+      result shouldBe None
     }
   }
 
