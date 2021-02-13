@@ -1,5 +1,5 @@
 package net.mcarolan.smirkle
-import cats.data.NonEmptyList
+import cats.data.{NonEmptyList, ValidatedNel}
 import enumeratum._
 
 object Domain {
@@ -57,4 +57,5 @@ object Domain {
   case class CreatesInvalidLines(lines: NonEmptyList[NonEmptyList[PositionedTile]]) extends InvalidPlacementsReason
   case object AllPlacedTilesMustBeInALine extends InvalidPlacementsReason
 
+  type PlacementResult[T] = ValidatedNel[InvalidPlacementsReason, T]
 }
