@@ -47,6 +47,8 @@ case class TileGrid(elements: Map[Position, Tile]) {
   def place(tile: Tile, position: Position): Option[TileGrid] = {
     if (position == Position(0, 0) && elements.isEmpty)
       Some(TileGrid(elements = elements + (position -> tile)))
+    else if (elements.contains(position))
+      None
     else {
       val allNeighbours = List(
         neighbours(position, Direction.left),

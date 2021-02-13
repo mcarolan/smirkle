@@ -97,6 +97,21 @@ class TileGridTest extends AnyFreeSpec with Matchers with OptionValues with Tabl
 
             result shouldBe None
           }
+
+          "cannot replace a placed tile" in {
+            val position1 = Position(0, 0)
+            val tile1 = Tile(Shape.One, Colour.Red)
+
+            val tile2 = Tile(Shape.Two, Colour.Red)
+
+            val result = for {
+              first <- TileGrid.Initial.place(tile1, position1)
+              second <- first.place(tile2, position2)
+              third <- second.place(tile2, position2)
+            } yield third
+
+            result shouldBe None
+          }
         }
     }
   }
