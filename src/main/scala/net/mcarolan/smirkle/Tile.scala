@@ -1,30 +1,37 @@
 package net.mcarolan.smirkle
 
+import cats.data.Validated.{Invalid, Valid}
+import cats.data.{NonEmptyList, NonEmptySet, Validated, ValidatedNel}
 import net.mcarolan.smirkle.Domain.{Colour, Shape}
+import cats.implicits._
 
 import scala.annotation.tailrec
 
 case class Tile(shape: Shape, colour: Colour)
 
 case class Position(x: Int, y: Int)
+
 object Direction {
   def left(position: Position): Position =
     position.copy(x = position.x - 1, y = position.y)
+
   def right(position: Position): Position =
     position.copy(x = position.x + 1, y = position.y)
+
   def below(position: Position): Position =
     position.copy(x = position.x, y = position.y - 1)
+
   def above(position: Position): Position =
     position.copy(x = position.x, y = position.y + 1)
 }
 
 case class TileGrid(elements: Map[Position, Tile]) {
 
-  private def neighbours(position: Position, direction: Position => Position): List[Tile] = {
-    @tailrec def inner(p: Position, acc: List[Tile]): List[Tile] =
-      elements.get(p) match {
+  private def neighbours(grid: TileGrid, position: Position, direction: Position => Position): List[(Position, Tile)] = {
+    @tailrec def inner(p: Position, acc: List[(Position, Tile)]): List[(Position, Tile)] =
+      grid.at(p) match {
         case Some(tile) =>
-          inner(direction(p), acc :+ tile)
+          inner(direction(p), acc :+ p -> tile)
         case None =>
           acc
       }
@@ -32,9 +39,10 @@ case class TileGrid(elements: Map[Position, Tile]) {
     inner(direction(position), Nil)
   }
 
-  private def valid(tiles: List[Tile]): Boolean = {
-    val distinctColours = tiles.map(_.colour).toSet.size
-    val distinctShapes = tiles.map(_.shape).toSet.size
+  private def isValidLine(line: NonEmptyList[(Position, Tile)]): Boolean = {
+    val tiles = line.map { case (_, tile) => tile }
+    val distinctColours = tiles.map(_.colour).toList.toSet.size
+    val distinctShapes = tiles.map(_.shape).toList.toSet.size
 
     if (distinctColours == 1)
       distinctShapes == tiles.size
@@ -44,26 +52,74 @@ case class TileGrid(elements: Map[Position, Tile]) {
       false
   }
 
-  def place(tile: Tile, position: Position): Option[TileGrid] = {
-    if (position == Position(0, 0) && elements.isEmpty)
-      Some(TileGrid(elements = elements + (position -> tile)))
-    else if (elements.contains(position))
-      None
-    else {
-      val allNeighbours = List(
-        neighbours(position, Direction.left),
-        neighbours(position, Direction.right),
-        neighbours(position, Direction.below),
-        neighbours(position, Direction.above)
-      )
+  sealed trait InvalidPlacementsReason
 
-      val totalNeighbourHoods = allNeighbours.count(_.nonEmpty)
-      val validNeighbours = allNeighbours.filter(_.nonEmpty).count(neighbourhood => valid(tile :: neighbourhood))
+  case object EmptyGridMustIncludeOrigin extends InvalidPlacementsReason
 
-      if (totalNeighbourHoods > 0 && totalNeighbourHoods == validNeighbours)
-        Some(TileGrid(elements = elements + (position -> tile)))
-      else
+  case class PlacingOverCurrentlyPlacedTiles(tiles: NonEmptyList[(Position, Tile)]) extends InvalidPlacementsReason
+
+  case class DuplicatePlacement(tiles: NonEmptyList[(Position, Tile)]) extends InvalidPlacementsReason
+
+  case class CreatesInvalidLines(lines: NonEmptyList[NonEmptyList[(Position, Tile)]]) extends InvalidPlacementsReason
+
+  case object AllPlacedTilesMustBeInALine extends InvalidPlacementsReason
+
+  type PlacementResult[T] = ValidatedNel[InvalidPlacementsReason, T]
+
+  private def buildLine(before: List[(Position, Tile)],
+                        element: (Position, Tile),
+                        after: List[(Position, Tile)]): Option[NonEmptyList[(Position, Tile)]] =
+    (NonEmptyList.fromList(before), NonEmptyList.fromList(after)) match {
+      case (Some(left), right) =>
+        Some((left :+ element) ++ right.fold[List[(Position, Tile)]](List.empty)(_.toList))
+      case (None, Some(right)) =>
+        Some(right.prepend(element))
+      case _ =>
         None
+    }
+
+  def place(placements: NonEmptyList[(Position, Tile)]): PlacementResult[TileGrid] = {
+    val placementPositions = placements.map { case (pos, _) => pos }.toList
+
+    val overlapping: PlacementResult[Unit] =
+      NonEmptyList.fromList(placements.filter { case (pos, _) => elements.contains(pos) }).map(PlacingOverCurrentlyPlacedTiles).toInvalidNel(())
+
+    val emptyAtOrigin: PlacementResult[Unit] =
+      if (size == 0 && !placementPositions.contains(Position(0, 0)))
+        Invalid(NonEmptyList.of(EmptyGridMustIncludeOrigin))
+      else
+        Valid(())
+
+    val duplicatePlacement: PlacementResult[Unit] =
+      NonEmptyList.fromList(placements.filter(p => placements.count(_ == p) > 1)).map(DuplicatePlacement).toInvalidNel(())
+
+    (overlapping, emptyAtOrigin, duplicatePlacement).tupled.andThen { _ =>
+      val result = TileGrid(elements ++ placements.toList)
+      val allLines: Set[NonEmptyList[(Position, Tile)]] =
+        placements.toList.flatMap {
+          case placement@(position, _) =>
+            val left = neighbours(result, position, Direction.left)
+            val right = neighbours(result, position, Direction.right)
+            val above = neighbours(result, position, Direction.above)
+            val below = neighbours(result, position, Direction.below)
+
+            List(
+              buildLine(left, placement, right),
+              buildLine(above, placement, below)
+            ).flatten
+        }.toSet
+
+      val invalidLines: PlacementResult[Unit] =
+        NonEmptyList.fromList(allLines.toList.filter(line => !isValidLine(line))).map(CreatesInvalidLines.apply).toInvalidNel(())
+
+      val singleTilePlacementOnEmpty = size == 0 && placements.size == 1
+      val allPlacedTilesMustBeInALine: PlacementResult[Unit] =
+        if (!allLines.exists(line => placements.forall(line.toList.contains)) && !singleTilePlacementOnEmpty)
+          Invalid(NonEmptyList.of(AllPlacedTilesMustBeInALine))
+        else
+          Valid(())
+
+      (invalidLines, allPlacedTilesMustBeInALine).tupled.as(result)
     }
   }
 
