@@ -1,5 +1,6 @@
 package net.mcarolan.smirkle
 import cats.data.{NonEmptyList, ValidatedNel}
+import enumeratum.EnumEntry.Lowercase
 import enumeratum._
 
 object Domain {
@@ -32,6 +33,14 @@ object Domain {
 
   case class Tile(shape: Shape, colour: Colour)
 
+  object Tile {
+    lazy val AllTiles: List[Tile] =
+      (for {
+        colour <- Colour.values
+        shape <- Shape.values
+      }  yield Tile(shape, colour)).toList
+  }
+
   case class Position(x: Int, y: Int)
 
   object Direction {
@@ -51,7 +60,7 @@ object Domain {
   case class PositionedTile(position: Position, tile: Tile)
 
   sealed trait InvalidPlacementsReason
-  case object EmptyGridMustIncludeOrigin extends InvalidPlacementsReason
+  case object PlacementOnEmptyGridMustIncludeOrigin extends InvalidPlacementsReason
   case class PlacingOverCurrentlyPlacedTiles(tiles: NonEmptyList[PositionedTile]) extends InvalidPlacementsReason
   case class DuplicatePlacement(tiles: NonEmptyList[PositionedTile]) extends InvalidPlacementsReason
   case class CreatesInvalidLines(lines: NonEmptyList[NonEmptyList[PositionedTile]]) extends InvalidPlacementsReason

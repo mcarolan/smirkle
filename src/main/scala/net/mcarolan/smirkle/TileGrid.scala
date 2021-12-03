@@ -17,7 +17,7 @@ case class TileGrid(elements: Map[Position, PositionedTile]) {
 
     val emptyAtOrigin: PlacementResult[Unit] =
       if (size == 0 && !placements.exists(_.position == Position(0, 0)))
-        Invalid(NonEmptyList.of(EmptyGridMustIncludeOrigin))
+        Invalid(NonEmptyList.of(PlacementOnEmptyGridMustIncludeOrigin))
       else
         Valid(())
 
@@ -25,6 +25,7 @@ case class TileGrid(elements: Map[Position, PositionedTile]) {
       NonEmptyList.fromList(placements.filter(p => placements.count(_.position == p.position) > 1)).map(DuplicatePlacement).toInvalidNel(())
 
     (overlapping, emptyAtOrigin, duplicatePlacement).tupled.andThen { _ =>
+      //the placements are viable enough to see if the resulting grid is valid
       val result = TileGrid(elements ++ placements.map(pt => pt.position -> pt).toList)
       val lines = allLines(result, placements)
 
